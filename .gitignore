@@ -1,0 +1,43 @@
+*.torrent
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output of go build
+/torrent-downloader
+
+# Dependencies (if vendored)
+/vendor/
+
+# Go workspace file
+go.work
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories (if you're not using modules)
+/dep/
+/Godeps/
+
+# Editor and IDE files
+*.idea/
+*.vscode/
+*.swp
+*~
+.DS_Store
+
+# Downloads directory (specific to your torrent project)
+/downloads/
+
+# Logs
+*.log
+
+# Environment files
+.env
