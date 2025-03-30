@@ -1,19 +1,21 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anacrolix/torrent"
 )
 
 func main() {
-	// Configuration
-	torrentPath := "example.torrent" // Replace with your torrent file path or magnet link
-	downloadDir := "./downloads"     // Directory where files will be downloaded
+	// Get torrent path from user
+	torrentPath := getTorrentPath()
+	downloadDir := "./downloads" // Directory where files will be downloaded
 
 	// Create download directory if it doesn't exist
 	err := os.MkdirAll(downloadDir, 0755)
@@ -53,14 +55,25 @@ func main() {
 	// Start download
 	t.DownloadAll()
 
-	// Monitor progress
-	go printProgress(t)
+	// Create a channel to signal completion
+	done := make(chan struct{})
 
-	// Keep the program running
-	select {}
+	// Monitor progress and signal completion
+	go printProgress(t, done)
+
+	// Wait for download to complete, then exit
+	<-done
+	fmt.Println("Exiting application...")
 }
 
-func printProgress(t *torrent.Torrent) {
+func getTorrentPath() string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter torrent file path or magnet link: ")
+	path, _ := reader.ReadString('\n')
+	return strings.TrimSpace(path)
+}
+
+func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 	for {
 		bs := t.BytesCompleted()
 		total := t.Length()
@@ -69,6 +82,7 @@ func printProgress(t *torrent.Torrent) {
 		fmt.Printf("\rProgress: %.2f%% - %d/%d bytes", progress, bs, total)
 		if bs == total {
 			fmt.Println("\nDownload completed!")
+			done <- struct{}{} // Signal completion
 			return
 		}
 		time.Sleep(time.Second)
