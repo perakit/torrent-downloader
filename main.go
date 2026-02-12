@@ -74,10 +74,40 @@ func getTorrentPath() string {
 }
 
 func printProgress(t *torrent.Torrent, done chan<- struct{}) {
+	var lastBytes int64
+	var lastTime time.Time
+	firstIteration := true
+
 	for {
 		bs := t.BytesCompleted()
 		total := t.Length()
 		progress := float64(bs) / float64(total) * 100
+
+		// Calculate download speed and estimated time remaining
+		var eta string
+		currentTime := time.Now()
+		if !firstIteration {
+			elapsedTime := currentTime.Sub(lastTime).Seconds()
+			if elapsedTime > 0 {
+				downloadedBytes := bs - lastBytes
+				speed := float64(downloadedBytes) / elapsedTime // bytes per second
+
+				if speed > 0 {
+					remainingBytes := total - bs
+					secondsRemaining := float64(remainingBytes) / speed
+					eta = formatDuration(time.Duration(secondsRemaining) * time.Second)
+				} else {
+					eta = "calculating..."
+				}
+			} else {
+				eta = "calculating..."
+			}
+		} else {
+			eta = "calculating..."
+			firstIteration = false
+		}
+		lastBytes = bs
+		lastTime = currentTime
 
 		// Get file-level information
 		files := t.Files()
@@ -108,13 +138,13 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 			currentFile = firstIncompleteFile
 		}
 
-		// Display progress with file information
+		// Display progress with file information and ETA
 		if currentFile != "" {
-			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | Current: %s",
-				progress, bs, total, filesCompleted, totalFiles, currentFile)
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | ETA: %s | Current: %s",
+				progress, bs, total, filesCompleted, totalFiles, eta, currentFile)
 		} else {
-			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed",
-				progress, bs, total, filesCompleted, totalFiles)
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | ETA: %s",
+				progress, bs, total, filesCompleted, totalFiles, eta)
 		}
 
 		if bs == total {
@@ -123,5 +153,24 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 			return
 		}
 		time.Sleep(time.Second)
+	}
+}
+
+// formatDuration converts a duration into a human-readable string
+func formatDuration(d time.Duration) string {
+	if d < 0 {
+		return "calculating..."
+	}
+
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm %ds", hours, minutes, seconds)
+	} else if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds)
+	} else {
+		return fmt.Sprintf("%ds", seconds)
 	}
 }
