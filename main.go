@@ -84,26 +84,28 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 		filesCompleted := 0
 		totalFiles := len(files)
 		currentFile := ""
+		var firstIncompleteFile string
 
 		for _, file := range files {
 			fileBytes := file.BytesCompleted()
 			fileLength := file.Length()
 			if fileBytes == fileLength {
 				filesCompleted++
-			} else if fileBytes > 0 && currentFile == "" {
-				// This file is actively being downloaded (has some bytes but not complete)
-				currentFile = file.DisplayPath()
+			} else {
+				// Track first incomplete file as fallback
+				if firstIncompleteFile == "" {
+					firstIncompleteFile = file.DisplayPath()
+				}
+				// Prioritize files with partial progress
+				if fileBytes > 0 && currentFile == "" {
+					currentFile = file.DisplayPath()
+				}
 			}
 		}
 		
-		// If no active file found (all incomplete files have 0 bytes), show the first incomplete file
-		if currentFile == "" && filesCompleted < totalFiles {
-			for _, file := range files {
-				if file.BytesCompleted() < file.Length() {
-					currentFile = file.DisplayPath()
-					break
-				}
-			}
+		// If no active file found, use the first incomplete file
+		if currentFile == "" {
+			currentFile = firstIncompleteFile
 		}
 
 		// Display progress with file information
