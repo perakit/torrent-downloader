@@ -79,7 +79,32 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 		total := t.Length()
 		progress := float64(bs) / float64(total) * 100
 
-		fmt.Printf("\rProgress: %.2f%% - %d/%d bytes", progress, bs, total)
+		// Get file-level information
+		files := t.Files()
+		filesCompleted := 0
+		totalFiles := len(files)
+		currentFile := ""
+
+		for _, file := range files {
+			fileBytes := file.BytesCompleted()
+			fileLength := file.Length()
+			if fileBytes == fileLength {
+				filesCompleted++
+			} else if currentFile == "" && fileBytes < fileLength {
+				// This is the first file that's not complete
+				currentFile = file.DisplayPath()
+			}
+		}
+
+		// Display progress with file information
+		if currentFile != "" {
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | Current: %s", 
+				progress, bs, total, filesCompleted, totalFiles, currentFile)
+		} else {
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed", 
+				progress, bs, total, filesCompleted, totalFiles)
+		}
+
 		if bs == total {
 			fmt.Println("\nDownload completed!")
 			done <- struct{}{} // Signal completion
