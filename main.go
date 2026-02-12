@@ -102,7 +102,7 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 				}
 			}
 		}
-		
+
 		// If no active file found, use the first incomplete file
 		if currentFile == "" {
 			currentFile = firstIncompleteFile
@@ -110,10 +110,10 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 
 		// Display progress with file information
 		if currentFile != "" {
-			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | Current: %s", 
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | Current: %s",
 				progress, bs, total, filesCompleted, totalFiles, currentFile)
 		} else {
-			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed", 
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed",
 				progress, bs, total, filesCompleted, totalFiles)
 		}
 
