@@ -77,6 +77,7 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 	lastBytes := t.BytesCompleted()
 	lastTime := time.Now()
 	var avgSpeed float64 // exponential moving average of download speed
+	firstIteration := true
 
 	for {
 		bs := t.BytesCompleted()
@@ -88,7 +89,11 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 		currentTime := time.Now()
 		elapsedTime := currentTime.Sub(lastTime).Seconds()
 		
-		if elapsedTime > 0 {
+		// Skip ETA calculation on first iteration to avoid near-zero elapsed time
+		if firstIteration {
+			eta = "calculating..."
+			firstIteration = false
+		} else if elapsedTime > 0 {
 			downloadedBytes := bs - lastBytes
 			instantSpeed := float64(downloadedBytes) / elapsedTime // bytes per second
 			
@@ -103,7 +108,14 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 			if avgSpeed > 0 {
 				remainingBytes := total - bs
 				secondsRemaining := float64(remainingBytes) / avgSpeed
-				eta = formatDuration(time.Duration(secondsRemaining) * time.Second)
+				
+				// Cap maximum ETA at 99 hours to prevent overflow and display sensibly
+				const maxSeconds = 99 * 3600 // 99 hours
+				if secondsRemaining > maxSeconds {
+					eta = "99h+"
+				} else {
+					eta = formatDuration(time.Duration(secondsRemaining) * time.Second)
+				}
 			} else {
 				eta = "calculating..."
 			}
