@@ -74,7 +74,7 @@ func getTorrentPath() string {
 }
 
 func printProgress(t *torrent.Torrent, done chan<- struct{}) {
-	var lastBytes int64
+	lastBytes := t.BytesCompleted()
 	lastTime := time.Now()
 	var avgSpeed float64 // exponential moving average of download speed
 
@@ -162,10 +162,6 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 
 // formatDuration converts a duration into a human-readable string
 func formatDuration(d time.Duration) string {
-	if d < 0 {
-		return "calculating..."
-	}
-
 	hours := int(d.Hours())
 	minutes := int(d.Minutes()) % 60
 	seconds := int(d.Seconds()) % 60
