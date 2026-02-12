@@ -75,8 +75,8 @@ func getTorrentPath() string {
 
 func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 	var lastBytes int64
-	var lastTime time.Time
-	firstIteration := true
+	lastTime := time.Now()
+	var avgSpeed float64 // exponential moving average of download speed
 
 	for {
 		bs := t.BytesCompleted()
@@ -86,25 +86,29 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 		// Calculate download speed and estimated time remaining
 		var eta string
 		currentTime := time.Now()
-		if !firstIteration {
-			elapsedTime := currentTime.Sub(lastTime).Seconds()
-			if elapsedTime > 0 {
-				downloadedBytes := bs - lastBytes
-				speed := float64(downloadedBytes) / elapsedTime // bytes per second
-
-				if speed > 0 {
-					remainingBytes := total - bs
-					secondsRemaining := float64(remainingBytes) / speed
-					eta = formatDuration(time.Duration(secondsRemaining) * time.Second)
-				} else {
-					eta = "calculating..."
-				}
+		elapsedTime := currentTime.Sub(lastTime).Seconds()
+		
+		if elapsedTime > 0 {
+			downloadedBytes := bs - lastBytes
+			instantSpeed := float64(downloadedBytes) / elapsedTime // bytes per second
+			
+			// Use exponential moving average for smoother speed calculation
+			// alpha = 0.3 gives more weight to recent measurements while smoothing volatility
+			if avgSpeed == 0 {
+				avgSpeed = instantSpeed
+			} else {
+				avgSpeed = 0.3*instantSpeed + 0.7*avgSpeed
+			}
+			
+			if avgSpeed > 0 {
+				remainingBytes := total - bs
+				secondsRemaining := float64(remainingBytes) / avgSpeed
+				eta = formatDuration(time.Duration(secondsRemaining) * time.Second)
 			} else {
 				eta = "calculating..."
 			}
 		} else {
 			eta = "calculating..."
-			firstIteration = false
 		}
 		lastBytes = bs
 		lastTime = currentTime
