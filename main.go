@@ -74,10 +74,56 @@ func getTorrentPath() string {
 }
 
 func printProgress(t *torrent.Torrent, done chan<- struct{}) {
+	lastBytes := t.BytesCompleted()
+	lastTime := time.Now()
+	var avgSpeed float64 // exponential moving average of download speed
+	firstIteration := true
+
 	for {
 		bs := t.BytesCompleted()
 		total := t.Length()
 		progress := float64(bs) / float64(total) * 100
+
+		// Calculate download speed and estimated time remaining
+		var eta string
+		currentTime := time.Now()
+		elapsedTime := currentTime.Sub(lastTime).Seconds()
+		
+		// Skip ETA calculation on first iteration to avoid near-zero elapsed time
+		if firstIteration {
+			eta = "calculating..."
+			firstIteration = false
+		} else if elapsedTime > 0 {
+			downloadedBytes := bs - lastBytes
+			instantSpeed := float64(downloadedBytes) / elapsedTime // bytes per second
+			
+			// Use exponential moving average for smoother speed calculation
+			// alpha = 0.3 gives more weight to recent measurements while smoothing volatility
+			if avgSpeed == 0 {
+				avgSpeed = instantSpeed
+			} else {
+				avgSpeed = 0.3*instantSpeed + 0.7*avgSpeed
+			}
+			
+			if avgSpeed > 0 {
+				remainingBytes := total - bs
+				secondsRemaining := float64(remainingBytes) / avgSpeed
+				
+				// Cap maximum ETA at 99 hours to prevent overflow and display sensibly
+				const maxSeconds = 99 * 3600 // 99 hours
+				if secondsRemaining > maxSeconds {
+					eta = "99h+"
+				} else {
+					eta = formatDuration(time.Duration(secondsRemaining) * time.Second)
+				}
+			} else {
+				eta = "calculating..."
+			}
+		} else {
+			eta = "calculating..."
+		}
+		lastBytes = bs
+		lastTime = currentTime
 
 		// Get file-level information
 		files := t.Files()
@@ -108,13 +154,13 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 			currentFile = firstIncompleteFile
 		}
 
-		// Display progress with file information
+		// Display progress with file information and ETA
 		if currentFile != "" {
-			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | Current: %s",
-				progress, bs, total, filesCompleted, totalFiles, currentFile)
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | ETA: %s | Current: %s",
+				progress, bs, total, filesCompleted, totalFiles, eta, currentFile)
 		} else {
-			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed",
-				progress, bs, total, filesCompleted, totalFiles)
+			fmt.Printf("\rProgress: %.2f%% - %d/%d bytes | Files: %d/%d completed | ETA: %s",
+				progress, bs, total, filesCompleted, totalFiles, eta)
 		}
 
 		if bs == total {
@@ -124,4 +170,19 @@ func printProgress(t *torrent.Torrent, done chan<- struct{}) {
 		}
 		time.Sleep(time.Second)
 	}
+}
+
+// formatDuration converts a duration into a human-readable string
+func formatDuration(d time.Duration) string {
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm %ds", hours, minutes, seconds)
+	}
+	if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds)
+	}
+	return fmt.Sprintf("%ds", seconds)
 }
