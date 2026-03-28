@@ -87,6 +87,7 @@ torrent-downloader/
 ├── main.go          # Main application code
 ├── go.mod          # Module definition
 ├── go.sum          # Dependency checksums
+├── LICENSE         # GPL-3.0 license
 ├── .gitignore      # Git ignore file
 └── downloads/      # Downloaded files (created at runtime)
 ```
@@ -103,4 +104,6 @@ This is a technical demonstration. Ensure you have the right to download and dis
 Feel free to fork this repository, submit issues, or send pull requests with improvements!
 
 ## License
-This project is unlicensed (public domain) unless specified otherwise. Use at your own risk.
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
+
+You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license. Any derivative works must also be distributed under the same license. See the [LICENSE](LICENSE) file for full details.
